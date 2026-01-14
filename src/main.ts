@@ -25,15 +25,24 @@ function recursiveinitApp(element: HTMLElement, state: StateHandler) {
   for (const [name, jsLike] of Object.entries(dataset)) {
     if (jsLike === undefined) continue
     if (name === 'text') {
-      element.innerHTML = `${state.proxy[jsLike]}`
+      // data-text
+      element.innerText = `${state.proxy[jsLike]}`
       state.addCallbacks(() => {
-        element.innerHTML = `${state.proxy[jsLike]}`
+        element.innerText = `${state.proxy[jsLike]}`
+      })
+    } else if (name === 'html') {
+      // data-html
+      element.innerHTML = `${jsLike}`
+      state.addCallbacks(() => {
+        element.innerHTML = `${jsLike}`
       })
     } else if (name.startsWith('on:')) {
+      // data-on:
       const eventName = name.slice(3) as keyof HTMLElementEventMap
       const fn = new Function("$event", `${jsLike}`).bind(state.proxy)
       element.addEventListener(eventName, (e) => fn(e))
     } else if (name.startsWith('bind:')) {
+      // data-bind:
       const attrName = name.slice(5)
       const fn = new Function(`return ${jsLike}`).bind(state.proxy)
       element.setAttribute(attrName, fn())
