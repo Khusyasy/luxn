@@ -6,15 +6,18 @@ export function isStateProxy(x: any): x is StateProxy {
 
 export class StateHandler {
   callbacks: Function[]
+  data: object
   proxy: StateProxy
 
-  constructor(object: object) {
+  constructor(data: object) {
     this.callbacks = []
+    this.data = data
 
     const handler: ProxyHandler<Record<PropertyKey, any>> = {
       get: (target, prop, receiver) => {
         if (prop === '__brand') return 'StateProxy'
         if (typeof prop === 'string' && prop.includes('.')) return this.getNestedProp(prop)
+        // console.log('get', target, prop, receiver)
 
         const value = Reflect.get(target, prop, receiver)
         if (value !== null && typeof value === 'object') {
@@ -23,6 +26,8 @@ export class StateHandler {
         return value
       },
       set: (target, prop, value, receiver) => {
+        // console.log('set', target, prop, value, receiver)
+
         const result = Reflect.set(target, prop, value, receiver)
         for (const callback of this.callbacks) {
           callback.call(target)
@@ -31,7 +36,7 @@ export class StateHandler {
       },
     }
 
-    this.proxy = new Proxy(object, handler) as StateProxy
+    this.proxy = new Proxy(data, handler) as StateProxy
   }
 
   addCallbacks(callback: Function) {

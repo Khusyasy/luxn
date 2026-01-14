@@ -8,16 +8,19 @@ function parseJslike(string: string): unknown {
 class VNode {
   element
   state
+  children: VNode[]
 
   constructor(element: HTMLElement, state: StateHandler) {
     this.element = element
     this.state = state
+    this.children = []
   }
 }
 
 function recursiveinitApp(element: HTMLElement, state: StateHandler) {
   const vnode = new VNode(element, state)
 
+  // TODO: handle jsLike so it can use variable directly while keeping reactivity instead of using 'this.'
   const dataset = element.dataset
   for (const [name, jsLike] of Object.entries(dataset)) {
     if (jsLike === undefined) continue
@@ -28,15 +31,27 @@ function recursiveinitApp(element: HTMLElement, state: StateHandler) {
       })
     } else if (name.startsWith('on:')) {
       const eventName = name.slice(3) as keyof HTMLElementEventMap
-      const fn = new Function("$event", jsLike).bind(state.proxy)
+      const fn = new Function("$event", `${jsLike}`).bind(state.proxy)
       element.addEventListener(eventName, (e) => fn(e))
+    } else if (name.startsWith('bind:')) {
+      const attrName = name.slice(5)
+      const fn = new Function(`return ${jsLike}`).bind(state.proxy)
+      element.setAttribute(attrName, fn())
+      state.addCallbacks(() => {
+        element.setAttribute(attrName, fn())
+      })
+    } else {
+      console.log(`'${name}' is not a valid features, ignored`)
     }
     delete dataset[name]
   }
 
   for (const child of Array.from(element.children)) {
-    recursiveinitApp(child as HTMLElement, state)
+    const childVNode = recursiveinitApp(child as HTMLElement, state)
+    vnode.children.push(childVNode)
   }
+
+  return vnode
 }
 
 function recursiveSearch(element: HTMLElement) {
@@ -46,10 +61,11 @@ function recursiveSearch(element: HTMLElement) {
     if (initialState !== null && typeof initialState == 'object') {
       const state = new StateHandler(initialState)
       const vroot = new VNode(element, state)
-      console.log(state, vroot)
       for (const child of Array.from(element.children)) {
-        recursiveinitApp(child as HTMLElement, vroot.state)
+        const vnode = recursiveinitApp(child as HTMLElement, vroot.state)
+        vroot.children.push(vnode)
       }
+      console.log('initalized app', vroot)
     }
   } else {
     for (const child of Array.from(element.children)) {

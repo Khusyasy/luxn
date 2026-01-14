@@ -37,6 +37,21 @@
         Change Age
       </button>
     </div>
+
+    <style>
+      .hidden {
+        display: none;
+      }
+    </style>
+    <div data-app="{ open: true }">
+      <p>test attribute bind</p>
+      <button data-on:click="this.open = !this.open">
+        Toggle
+      </button>
+      <div data-bind:class="this.open ? '' : 'hidden'">
+        Open
+      </div>
+    </div>
   </body>
 
 </html>
