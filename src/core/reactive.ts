@@ -1,21 +1,54 @@
-export function createReactive<T extends object>(
-  object: T,
-  callback: Function
-) {
-  const handler: ProxyHandler<T> = {
-    get: (target, prop, receiver) => {
-      const value = Reflect.get(target, prop, receiver)
-      if (value !== null && typeof value === 'object') {
-        return new Proxy(value, handler as ProxyHandler<object>)
-      }
-      return value
-    },
-    set: (target, prop, value, receiver) => {
-      const result = Reflect.set(target, prop, value, receiver)
-      callback()
-      return result
-    },
+type StateProxy = Record<PropertyKey, any> & { __brand: 'StateProxy' }
+
+export function isStateProxy(x: any): x is StateProxy {
+  return x && x.__brand === 'StateProxy'
+}
+
+export class StateHandler {
+  callbacks: Function[]
+  proxy: StateProxy
+
+  constructor(object: object) {
+    this.callbacks = []
+
+    const handler: ProxyHandler<Record<PropertyKey, any>> = {
+      get: (target, prop, receiver) => {
+        if (prop === '__brand') return 'StateProxy'
+        if (typeof prop === 'string' && prop.includes('.')) return this.getNestedProp(prop)
+
+        const value = Reflect.get(target, prop, receiver)
+        if (value !== null && typeof value === 'object') {
+          return new Proxy(value, handler) as StateProxy
+        }
+        return value
+      },
+      set: (target, prop, value, receiver) => {
+        const result = Reflect.set(target, prop, value, receiver)
+        for (const callback of this.callbacks) {
+          callback.call(target)
+        }
+        return result
+      },
+    }
+
+    this.proxy = new Proxy(object, handler) as StateProxy
   }
 
-  return new Proxy<T>(object, handler)
+  addCallbacks(callback: Function) {
+    this.callbacks.push(callback)
+  }
+
+  getNestedProp(prop: string) {
+    const paths = prop.split('.')
+
+    let curr: any = this.proxy
+    for (const path of paths) {
+      if (isStateProxy(curr)) {
+        const next = curr[path]
+        curr = next
+      }
+    }
+
+    return curr
+  }
 }

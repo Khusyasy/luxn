@@ -5,7 +5,11 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "module": "esnext",
-    "target": "es2015",
+    "target": "es2017",
+    "lib": [
+      "es2017",
+      "dom"
+    ],
     "moduleResolution": "bundler",
     "esModuleInterop": true,
     "sourceMap": true,
@@ -15,7 +19,7 @@
     "exactOptionalPropertyTypes": true,
     "noImplicitReturns": true,
     "noImplicitOverride": true,
-    "noUnusedLocals": true,
+    // "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noPropertyAccessFromIndexSignature": true,

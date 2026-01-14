@@ -9,10 +9,33 @@
   </head>
 
   <body>
-    <h1>Hello</h1>
-    <p>world</p>
-    <div id="app">
-      app
+    <h1>Hello, Luxn</h1>
+    <div data-app="{ count: 0, data: '' }">
+      <button data-on:click="this.count++">
+        Click
+      </button>
+      <p>You pressed the button <span data-text="count"></span> times!</p>
+
+      <button data-on:click="console.log($event); this.data = $event">
+        Event
+      </button>
+      <div data-text="data"></div>
+    </div>
+
+    <div data-app="{ user: { name: 'Khusyasy', age: 20 } }">
+      <ul>
+        <li>Name: <span data-text="user.name"></span></li>
+        <li>Age: <span data-text="user.age"></span></li>
+      </ul>
+      <button data-on:click="this.user = { name: 'changed', age: 25 }">
+        Change All
+      </button>
+      <button data-on:click="this.user.name = 'another one'">
+        Change Name
+      </button>
+      <button data-on:click="this.user.age = 1000">
+        Change Age
+      </button>
     </div>
   </body>
 
