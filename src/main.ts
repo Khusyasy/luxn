@@ -36,6 +36,18 @@ function recursiveinitApp(element: HTMLElement, state: StateHandler) {
       state.addCallbacks(() => {
         element.innerHTML = `${jsLike}`
       })
+    } else if (name === 'model') {
+      // data-model
+      if (!(element instanceof HTMLInputElement)) {
+        throw new Error(`'data-model' can only be used in input elements`)
+      }
+      element.value = state.proxy[jsLike]
+      element.addEventListener('input', () => {
+        state.proxy[jsLike] = element.value
+      })
+      state.addCallbacks(() => {
+        element.value = state.proxy[jsLike]
+      })
     } else if (name.startsWith('on:')) {
       // data-on:
       const eventName = name.slice(3) as keyof HTMLElementEventMap

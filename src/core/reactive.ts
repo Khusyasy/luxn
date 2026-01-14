@@ -27,12 +27,21 @@ export class StateHandler {
       },
       set: (target, prop, value, receiver) => {
         // console.log('set', target, prop, value, receiver)
-
-        const result = Reflect.set(target, prop, value, receiver)
-        for (const callback of this.callbacks) {
-          callback.call(target)
+        if (typeof prop === 'string' && prop.includes('.')) {
+          const path = prop.split('.').pop() || ''
+          const proxy = this.getNestedProxy(prop)
+          const result = Reflect.set(proxy, path, value)
+          for (const callback of this.callbacks) {
+            callback.call(target)
+          }
+          return result
+        } else {
+          const result = Reflect.set(target, prop, value, receiver)
+          for (const callback of this.callbacks) {
+            callback.call(target)
+          }
+          return result
         }
-        return result
       },
     }
 
@@ -50,6 +59,20 @@ export class StateHandler {
     for (const path of paths) {
       if (isStateProxy(curr)) {
         const next = curr[path]
+        curr = next
+      }
+    }
+
+    return curr
+  }
+
+  getNestedProxy(prop: string) {
+    const paths = prop.split('.')
+
+    let curr = this.proxy
+    for (const path of paths) {
+      const next = curr[path]
+      if (isStateProxy(next)) {
         curr = next
       }
     }

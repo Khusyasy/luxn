@@ -54,6 +54,20 @@
         Open
       </div>
     </div>
+
+    <div data-app="{ search: 'test', form: { name: 'Khusyasy', age: 20 } }">
+      <input type="text" data-model="search">
+      <p data-text="search"></p>
+
+      <input type="text" data-model="form.name">
+      <p data-text="form.name"></p>
+
+      <input type="number" data-model="form.age">
+      <input type="number" data-model="form.age">
+      <p data-text="form.age"></p>
+      <button data-on:click="this.form.age++">Add</button>
+
+    </div>
   </body>
 
 </html>
