@@ -6,22 +6,23 @@ function parseJslike(string: string): unknown {
 }
 
 class VNode {
-  element
   state
+  element
   children: VNode[]
 
-  constructor(element: HTMLElement, state: StateHandler) {
-    this.element = element
+  constructor(state: StateHandler, element: HTMLElement) {
     this.state = state
+    this.element = element
     this.children = []
   }
 }
 
-function recursiveinitApp(element: HTMLElement, state: StateHandler) {
-  const vnode = new VNode(element, state)
+function recursiveinitApp(state: StateHandler, element: HTMLElement) {
+  const vNode = new VNode(state, element)
 
   // TODO: handle jsLike so it can use variable directly while keeping reactivity instead of using 'this.'
   const dataset = element.dataset
+  // console.log(element, dataset)
   for (const [name, jsLike] of Object.entries(dataset)) {
     if (jsLike === undefined) continue
     if (name === 'text') {
@@ -48,6 +49,38 @@ function recursiveinitApp(element: HTMLElement, state: StateHandler) {
       state.addCallbacks(() => {
         element.value = state.proxy[jsLike]
       })
+    } else if (name === 'for') {
+      // data-for
+      if (!(element instanceof HTMLTemplateElement)) {
+        throw new Error(`'data-for' can only be used in template elements`)
+      }
+      const [lhs, rhs] = jsLike.split(' in ')
+      if (!lhs || !rhs) throw new Error(`expression must be 'x in y'`)
+      const updateFor = () => {
+        const iterable = state.proxy[rhs]
+        if (!(iterable instanceof Array)) throw new Error('must be array')
+        for (const value of iterable) {
+          // setup the x = values from y
+          // TODO: check like is this good idea? is there a way to not make a new state everytime
+          // this doesnt break reactivity lol? check again later
+          const stateFor = new StateHandler(Object.assign({}, state.data))
+          // console.log(state, stateFor, Object.assign({}, state.data))
+          stateFor.proxy[lhs] = value
+          const clonedTemplate = element.content.cloneNode(true) as DocumentFragment
+          // DocumentFragment cannot be used as HTMLElement, we have to get the child manually
+          for (const child of Array.from(clonedTemplate.children)) {
+            const vForNode = recursiveinitApp(stateFor, child as HTMLElement)
+            vNode.children.push(vForNode)
+            element.insertAdjacentElement('beforebegin', child)
+          }
+        }
+      }
+      updateFor()
+      state.addCallbacks(() => {
+        vNode.children.forEach(child => child.element.remove())
+        vNode.children = []
+        updateFor()
+      })
     } else if (name.startsWith('on:')) {
       // data-on:
       const eventName = name.slice(3) as keyof HTMLElementEventMap
@@ -68,32 +101,33 @@ function recursiveinitApp(element: HTMLElement, state: StateHandler) {
   }
 
   for (const child of Array.from(element.children)) {
-    const childVNode = recursiveinitApp(child as HTMLElement, state)
-    vnode.children.push(childVNode)
+    const vChildNode = recursiveinitApp(state, child as HTMLElement)
+    vNode.children.push(vChildNode)
   }
 
-  return vnode
+  return vNode
 }
 
-function recursiveSearch(element: HTMLElement) {
+function initApp(element: HTMLElement) {
   const dataset = element.dataset
   if (dataset['app']) {
     const initialState = parseJslike(dataset['app'])
     if (initialState !== null && typeof initialState == 'object') {
       const state = new StateHandler(initialState)
-      const vroot = new VNode(element, state)
+      const vRoot = new VNode(state, element)
       for (const child of Array.from(element.children)) {
-        const vnode = recursiveinitApp(child as HTMLElement, vroot.state)
-        vroot.children.push(vnode)
+        const vNode = recursiveinitApp(vRoot.state, child as HTMLElement)
+        vRoot.children.push(vNode)
       }
-      console.log('initalized app', vroot)
-    }
-  } else {
-    for (const child of Array.from(element.children)) {
-      recursiveSearch(child as HTMLElement)
+      console.log('initalized app', vRoot)
     }
   }
   delete dataset['app']
 }
 
-recursiveSearch(document.body)
+function main() {
+  const dataAppEl = document.querySelectorAll('[data-app]')
+  dataAppEl.forEach(element => initApp(element as HTMLElement))
+}
+
+main()
