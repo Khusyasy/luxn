@@ -15,10 +15,11 @@ const UPDATE_ORDER: StateCallbacksFrom[] = ['cb-for', 'cb-model', 'cb-bind', 'cb
 
 export class StateHandler {
   callbacks: StateCallbacks
-  data: object
+  data
+  parent
   proxy: StateProxy
 
-  constructor(data: object) {
+  constructor(data: object, parent: StateHandler | null = null) {
     this.callbacks = {
       'cb-for': [],
       'cb-model': [],
@@ -27,18 +28,28 @@ export class StateHandler {
       'cb-html': [],
     }
     this.data = data
+    this.parent = parent
 
     const handler: ProxyHandler<Record<PropertyKey, any>> = {
       get: (target, prop, receiver) => {
         if (prop === '__brand') return 'StateProxy'
+        // TODO: i think nested prop doesnt work for parents for now
         if (typeof prop === 'string' && prop.includes('.')) return this.getNestedProp(prop)
         // console.log('get', target, prop, receiver)
 
-        const value = Reflect.get(target, prop, receiver)
-        if (value !== null && typeof value === 'object') {
-          return new Proxy(value, handler) as StateProxy
+        if (prop in target) {
+          const value = Reflect.get(target, prop, receiver)
+          if (value !== null && typeof value === 'object') {
+            return new Proxy(value, handler) as StateProxy
+          }
+          return value
         }
-        return value
+
+        if (this.parent) {
+          return this.parent.proxy[prop]
+        }
+
+        return undefined
       },
       set: (target, prop, value, receiver) => {
         // console.log('set', target, prop, value, receiver)
