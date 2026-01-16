@@ -1,8 +1,7 @@
 import { StateHandler } from "./core/reactive";
 
-function parseJslike(string: string): any {
+function parseStrAsJsObject(string: string): any {
   // TODO: find safer way to do this
-  // console.log(parseJslike, string)
   return new Function(`return ${string}`)()
 }
 
@@ -100,15 +99,34 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
     } else if (name.startsWith('on:')) {
       // data-on:
       const eventName = name.slice(3) as keyof HTMLElementEventMap
-      const fn = new Function("$event", `${jsLike}`).bind(state.proxy)
-      element.addEventListener(eventName, (e) => fn(e))
+      const eventFn = new Function("$event", `${jsLike}`).bind(state.proxy)
+      element.addEventListener(eventName, (e) => eventFn(e))
     } else if (name.startsWith('bind:')) {
       // data-bind:
       const attrName = name.slice(5)
-      const fn = new Function(`return ${jsLike}`).bind(state.proxy)
-      element.setAttribute(attrName, fn())
+      const attrGetterFn = new Function(`return ${jsLike}`).bind(state.proxy)
+      const nonReactiveAttr = element.getAttribute(attrName)
+      const updateAttr = () => {
+        let resultClass: string[] = []
+        const value = attrGetterFn()
+
+        // using normal attr while using attr binding
+        if (nonReactiveAttr) resultClass.push(nonReactiveAttr)
+
+        if (typeof value === 'object') {   // attr binding using objects
+          for (const [text, v] of Object.entries(value)) {
+            if (v) {
+              resultClass.push(text)
+            }
+          }
+        } else {
+          resultClass.push(value)
+        }
+        element.setAttribute(attrName, resultClass.join(' '))
+      }
+      updateAttr()
       state.addCallbacks(() => {
-        element.setAttribute(attrName, fn())
+        updateAttr()
       })
     } else {
       console.log(`'${name}' is not a valid features, ignored`)
@@ -127,7 +145,7 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
 function initApp(element: HTMLElement) {
   const dataset = element.dataset
   if (dataset['app']) {
-    const initialState = parseJslike(dataset['app'])
+    const initialState = parseStrAsJsObject(dataset['app'])
     if (initialState !== null && typeof initialState == 'object') {
       const state = new StateHandler(initialState)
       const vRoot = new VNode(state, element)
