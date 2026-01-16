@@ -6,16 +6,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Luxn Todo App</title>
     <script src="/dist/luxn.esm.js" defer></script>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
   </head>
 
-  <body>
-    <h1>Todo App in Luxn!</h1>
+  <body class="">
     <!-- TODO: todo app features, basic mvp for implementing luxn
       1. task CRUD
       2. task completion toggle
       3. store data in localstorage
       4. task search / filter
       5. show empty state -->
+    <h1 class="text-4xl p-4 text-center">Todo App in Luxn!</h1>
+    <div data-app="{ input: '', tasks: [{text: 'test', done: false}] }" class="container mx-auto p-4">
+      <form
+        data-on:submit="$event.preventDefault(); if (!this.input) return; this.tasks = [...this.tasks, {text: this.input, done: false}]; this.input = ''"
+        class="flex flex-row justify-center items-center gap-2 rounded-md bg-cyan-50 w-full p-4">
+        <div class="rounded-md flex flex-row justify-center items-center gap-2 w-full">
+          <label for="task">New Task</label>
+          <input data-model="input" type="text" name="task" id="task"
+            class="block flex-1 rounded-md px-3 py-1.5 text-base text-black outline-1 outline-black">
+        </div>
+        <button type="submit"
+          class="block rounded-md px-3 py-1.5 cursor-pointer bg-blue-400 hover:bg-blue-300 text-white">
+          Add
+        </button>
+      </form>
+      <h2 class="text-xl font-semibold">Available Task</h2>
+      <div class="flex flex-col items-center gap-2">
+        <template data-for="task in tasks">
+          <div data-bind:class="{ 'bg-cyan-50': !this.task.done, 'bg-gray-50': this.task.done }"
+            class="w-full rounded-md px-3 py-2 flex items-center justify-between gap-2">
+            <span data-text="task.text" data-on:click="this.task.done = !this.task.done"
+              data-bind:class="{ 'line-through': this.task.done }" class="cursor-pointer flex-1"></span>
+            <div class="flex items-center justify-center gap-2">
+              <input data-model="task.done" type="checkbox" class="block p-1.5 cursor-pointer">
+              <button data-on:click="this.tasks = this.tasks.splice(this.$i, 1)"
+                class="block p-1.5 cursor-pointer rounded-md bg-red-400 hover:bg-red-300 text-white">Delete</button>
+            </div>
+          </div>
+        </template>
+      </div>
+    </div>
   </body>
 
 </html>
