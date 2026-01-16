@@ -74,13 +74,15 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
       const updateFor = () => {
         const iterable = state.proxy[rhs]
         if (!(iterable instanceof Array)) throw new Error('must be array')
-        for (const value of iterable) {
+        for (const [index, value] of iterable.entries()) {
           // setup the x = values from y
           // TODO: check like is this good idea? is there a way to not make a new state everytime
           // this doesnt break reactivity lol? check again later
           const stateFor = new StateHandler(Object.assign({}, state.data))
           // console.log(state, stateFor, Object.assign({}, state.data))
           stateFor.proxy[lhs] = value
+          // TODO: handle data-for index
+          stateFor.proxy['$i'] = index
           const clonedTemplate = element.content.cloneNode(true) as DocumentFragment
           // DocumentFragment cannot be used as HTMLElement, we have to get the child manually
           for (const child of Array.from(clonedTemplate.children)) {
