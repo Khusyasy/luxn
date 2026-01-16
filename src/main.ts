@@ -28,13 +28,13 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
     if (name === 'text') {
       // data-text
       element.innerText = `${state.proxy[jsLike]}`
-      state.addCallbacks(() => {
+      state.addCallbacks('cb-text', () => {
         element.innerText = `${state.proxy[jsLike]}`
       })
     } else if (name === 'html') {
       // data-html
       element.innerHTML = `${jsLike}`
-      state.addCallbacks(() => {
+      state.addCallbacks('cb-html', () => {
         element.innerHTML = `${jsLike}`
       })
     } else if (name === 'model') {
@@ -58,7 +58,7 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
       }
 
       formElementSet()
-      state.addCallbacks(() => {
+      state.addCallbacks('cb-model', () => {
         formElementSet()
       })
       element.addEventListener('input', () => {
@@ -93,7 +93,7 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
         }
       }
       updateFor()
-      state.addCallbacks(() => {
+      state.addCallbacks('cb-for', () => {
         vNode.children.forEach(child => child.element.remove())
         vNode.children = []
         updateFor()
@@ -102,6 +102,7 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
       // data-on:
       const eventName = name.slice(3) as keyof HTMLElementEventMap
       const eventFn = new Function("$event", `${jsLike}`).bind(state.proxy)
+      // TODO: fix after event call state not updating, using order doesnt seems to fix
       element.addEventListener(eventName, (e) => eventFn(e))
     } else if (name.startsWith('bind:')) {
       // data-bind:
@@ -127,7 +128,7 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
         element.setAttribute(attrName, resultClass.join(' '))
       }
       updateAttr()
-      state.addCallbacks(() => {
+      state.addCallbacks('cb-bind', () => {
         updateAttr()
       })
     } else {

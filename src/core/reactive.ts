@@ -4,13 +4,28 @@ export function isStateProxy(x: any): x is StateProxy {
   return x && x.__brand === 'StateProxy'
 }
 
+type StateCallbacksFrom = 'cb-for' | 'cb-model' | 'cb-bind' | 'cb-text' | 'cb-html'
+type StateCallbacksHandler = () => void
+type StateCallbacks = Record<StateCallbacksFrom, StateCallbacksHandler[]>
+
+// 'cb-for' can init app inside loop so it need to be first?
+// 'cb-model' can write to proxy so it need to update before the other read
+// 'cb-bind', 'cb-text', 'cb-html' only read so should update last
+const UPDATE_ORDER: StateCallbacksFrom[] = ['cb-for', 'cb-model', 'cb-bind', 'cb-text', 'cb-html']
+
 export class StateHandler {
-  callbacks: Function[]
+  callbacks: StateCallbacks
   data: object
   proxy: StateProxy
 
   constructor(data: object) {
-    this.callbacks = []
+    this.callbacks = {
+      'cb-for': [],
+      'cb-model': [],
+      'cb-bind': [],
+      'cb-text': [],
+      'cb-html': [],
+    }
     this.data = data
 
     const handler: ProxyHandler<Record<PropertyKey, any>> = {
@@ -35,8 +50,11 @@ export class StateHandler {
         } else {
           result = Reflect.set(target, prop, value, receiver)
         }
-        for (const callback of this.callbacks) {
-          callback.call(target, prop, value)
+        for (const from of UPDATE_ORDER) {
+          for (const callback of this.callbacks[from]) {
+            // console.log(from, callback.toString(), target)
+            callback.call(target)
+          }
         }
         return result
       },
@@ -45,9 +63,9 @@ export class StateHandler {
     this.proxy = new Proxy(data, handler) as StateProxy
   }
 
-  addCallbacks(callback: Function) {
-    // console.log('addCallbacks', callback)
-    this.callbacks.push(callback)
+  addCallbacks(from: StateCallbacksFrom, handler: StateCallbacksHandler) {
+    // console.log(from, handler.toString(), this.data)
+    this.callbacks[from].push(handler)
   }
 
   getNestedProp(prop: string) {
