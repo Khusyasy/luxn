@@ -1,7 +1,8 @@
 import { StateHandler } from "./core/reactive";
 
-function parseJslike(string: string): unknown {
+function parseJslike(string: string): any {
   // TODO: find safer way to do this
+  // console.log(parseJslike, string)
   return new Function(`return ${string}`)()
 }
 
@@ -42,12 +43,27 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
       if (!(element instanceof HTMLInputElement)) {
         throw new Error(`'data-model' can only be used in input elements`)
       }
-      element.value = state.proxy[jsLike]
-      element.addEventListener('input', () => {
-        state.proxy[jsLike] = element.value
-      })
+      const formElementSet = () => {
+        if (element.type === 'checkbox') {
+          element.checked = state.proxy[jsLike]
+        } else { // default for all input type
+          element.value = state.proxy[jsLike]
+        }
+      }
+      const formElementGet = () => {
+        if (element.type === 'checkbox') {
+          state.proxy[jsLike] = element.checked
+        } else { // default for all input type
+          state.proxy[jsLike] = element.value
+        }
+      }
+
+      formElementSet()
       state.addCallbacks(() => {
-        element.value = state.proxy[jsLike]
+        formElementSet()
+      })
+      element.addEventListener('input', () => {
+        formElementGet()
       })
     } else if (name === 'for') {
       // data-for
