@@ -75,6 +75,15 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
       element.addEventListener('input', () => {
         formElementGet()
       })
+    } else if (name === 'effect') {
+      // data-effect
+      const effectFn = parseStrAsJsLike(jsLike, state)
+      state.startTracking()
+      effectFn()
+      const depends = state.stopTracking()
+      state.addCallbacks(depends, () => {
+        effectFn()
+      })
     } else if (name === 'for') {
       // data-for
       if (!(element instanceof HTMLTemplateElement)) {
