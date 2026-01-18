@@ -1,20 +1,23 @@
 type StateProxy = Record<PropertyKey, any> & { __brand: 'StateProxy' }
+type AssertNever<T extends never> = T
 
 export function isStateProxy(x: any): x is StateProxy {
   return x && x.__brand === 'StateProxy'
 }
 
-type StateCallbacksFrom = 'cb-for' | 'cb-model' | 'cb-bind' | 'cb-text' | 'cb-html'
-type StateCallbacksHandler = () => void
-type StateCallbacks = Record<StateCallbacksFrom, StateCallbacksHandler[]>
+type From = 'cb-for' | 'cb-if' | 'cb-model' | 'cb-bind' | 'cb-text' | 'cb-html'
+type Handler = () => void
+type Callbacks = Record<From, Handler[]>
 
-// 'cb-for' can init app inside loop so it need to be first?
+// 'cb-for' can init app inside loop so it need to be first
+// 'cb-if' kinda same as for
 // 'cb-model' can write to proxy so it need to update before the other read
 // 'cb-bind', 'cb-text', 'cb-html' only read so should update last
-const UPDATE_ORDER: StateCallbacksFrom[] = ['cb-for', 'cb-model', 'cb-bind', 'cb-text', 'cb-html']
+const UPDATE_ORDER = ['cb-for', 'cb-if', 'cb-model', 'cb-bind', 'cb-text', 'cb-html'] as const
+type Missing = AssertNever<Exclude<From, typeof UPDATE_ORDER[number]>>
 
 export class StateHandler {
-  callbacks: StateCallbacks
+  callbacks: Callbacks
   data
   parent
   proxy: StateProxy
@@ -22,6 +25,7 @@ export class StateHandler {
   constructor(data: object, parent: StateHandler | null = null) {
     this.callbacks = {
       'cb-for': [],
+      'cb-if': [],
       'cb-model': [],
       'cb-bind': [],
       'cb-text': [],
@@ -74,7 +78,7 @@ export class StateHandler {
     this.proxy = new Proxy(data, handler) as StateProxy
   }
 
-  addCallbacks(from: StateCallbacksFrom, handler: StateCallbacksHandler) {
+  addCallbacks(from: From, handler: Handler) {
     // console.log(from, handler.toString(), this.data)
     this.callbacks[from].push(handler)
   }

@@ -14,8 +14,8 @@
   <!-- TODO: todo app features, basic mvp for implementing luxn
       1. task CRUD
       2. task completion toggle
-      3. store data in localstorage
-      4. task search / filter
+      3. store data in localstorage (probably using effect and such)
+      4. task search / filter (computed)
       5. show empty state -->
   <h1 class="text-4xl p-4 text-center">Todo App in Luxn!</h1>
   <div data-app="{ input: '', tasks: [{text: 'test', done: false}] }" class="container mx-auto p-4">
@@ -27,8 +27,8 @@
         <input data-model="input" type="text" name="task" id="task"
           class="block flex-1 rounded-md px-3 py-1.5 text-base text-black outline-1 outline-black">
       </div>
-      <button type="submit"
-        class="block rounded-md px-3 py-1.5 cursor-pointer bg-blue-400 hover:bg-blue-300 text-white">
+      <button data-bind:disabled="!this.input" type="submit"
+        class="block rounded-md px-3 py-1.5 bg-blue-400 hover:bg-blue-300 disabled:bg-gray-300 text-white cursor-pointer disabled:cursor-default">
         Add
       </button>
     </form>
@@ -46,6 +46,12 @@
           </div>
         </div>
       </template>
+      <template data-if="this.tasks.length > 0">
+        <p>You have <span data-text="tasks.length"></span> task!</p>
+      </template>
+      <!-- <template data-else>
+        <p>No task added yet :(</p>
+      </template> -->
     </div>
   </div>
 </body>

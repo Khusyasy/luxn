@@ -5,6 +5,10 @@ function parseStrAsJsObject(string: string): any {
   return new Function(`return ${string}`)()
 }
 
+function parseStrAsJsLike(string: string, state: StateHandler) {
+  return new Function(`return ${string}`).bind(state.proxy)
+}
+
 class VNode {
   state
   element
@@ -40,7 +44,7 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
     } else if (name === 'model') {
       // data-model
       if (!(element instanceof HTMLInputElement)) {
-        throw new Error(`'data-model' can only be used in input elements`)
+        throw new Error(`'data-model' can only be used in input element`)
       }
       const formElementSet = () => {
         if (element.type === 'checkbox') {
@@ -95,6 +99,33 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
         vNode.children = []
         updateFor()
       })
+    } else if (name === 'if') {
+      // data-if
+      if (!(element instanceof HTMLTemplateElement)) {
+        throw new Error(`'data-if' can only be used in template element`)
+      }
+      const ifGetterFn = parseStrAsJsLike(jsLike, state)
+      const clonedTemplate = element.content.cloneNode(true) as DocumentFragment
+      for (const child of Array.from(clonedTemplate.children)) {
+        const vIfNode = recursiveinitApp(state, child as HTMLElement)
+        vNode.children.push(vIfNode)
+        element.insertAdjacentElement('beforebegin', child)
+      }
+      const updateIf = () => {
+        const value = ifGetterFn()
+        if (value) {
+          vNode.children.forEach(child => element.insertAdjacentElement('beforebegin', child.element))
+        } else {
+          vNode.children.forEach(child => child.element.remove())
+        }
+      }
+      updateIf()
+      state.addCallbacks('cb-if', () => {
+        updateIf()
+      })
+    } else if (name === 'else') {
+      // data-else
+      throw new Error(`'data-else' is not implemented yet`)
     } else if (name.startsWith('on:')) {
       // data-on:
       const eventName = name.slice(3) as keyof HTMLElementEventMap
@@ -103,7 +134,7 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
     } else if (name.startsWith('bind:')) {
       // data-bind:
       const attrName = name.slice(5)
-      const attrGetterFn = new Function(`return ${jsLike}`).bind(state.proxy)
+      const attrGetterFn = parseStrAsJsLike(jsLike, state)
       const nonReactiveAttr = element.getAttribute(attrName)
       const updateAttr = () => {
         let resultClass: string[] = []
