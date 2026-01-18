@@ -13,7 +13,7 @@ export class StateHandler {
   data
   parent
   tracking: boolean
-  trackedProps: string[]
+  trackedProps: Set<string>
   proxy: StateProxy
 
   constructor(data: object, parent: StateHandler | null = null) {
@@ -21,7 +21,7 @@ export class StateHandler {
     this.data = data
     this.parent = parent
     this.tracking = false
-    this.trackedProps = []
+    this.trackedProps = new Set()
 
     const handler: ProxyHandler<Record<PropertyKey, any>> = {
       get: (target, prop, receiver) => {
@@ -31,7 +31,7 @@ export class StateHandler {
         // console.log('get', target, prop, receiver)
 
         if (typeof prop === 'string' && this.tracking) {
-          this.trackedProps.push(prop)
+          this.trackedProps.add(prop)
         }
 
         if (prop in target) {
@@ -61,6 +61,7 @@ export class StateHandler {
         if (typeof prop === 'string' && this.callbacks[prop]) {
           for (const callback of this.callbacks[prop]) {
             // console.log('callback', prop, callback.toString())
+            // console.log('callback')
             callback.call(target)
           }
         }
@@ -73,6 +74,7 @@ export class StateHandler {
 
   addCallbacks(depends: string[], handler: Handler) {
     for (const depend of depends) {
+      if (depend === 'constructor') continue  // special case, mungkin ada lagi yang lain?
       if (!this.callbacks[depend]) {
         this.callbacks[depend] = []
       }
@@ -109,12 +111,12 @@ export class StateHandler {
   }
 
   startTracking() {
-    this.trackedProps = []
+    this.trackedProps.clear()
     this.tracking = true
   }
 
-  stopTracking() {
+  stopTracking(): string[] {
     this.tracking = true
-    return this.trackedProps
+    return Array.from(this.trackedProps)
   }
 }
