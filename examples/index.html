@@ -1,17 +1,29 @@
 <!doctype html>
 <html lang="en">
 
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Luxn</title>
-    <script src="/dist/luxn.esm.js" defer></script>
-  </head>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Luxn</title>
+  <script src="/dist/luxn.esm.js" defer></script>
+</head>
 
-  <body>
-    <h1>Hello, Luxn</h1>
+<body>
+  <h1>Hello, Luxn</h1>
 
-    <!-- <div data-app="{ search: '', user: { name: 'Khusyasy', age: 20 }, event: null }">
+  <div data-app="{ current: 2 }">
+    <button data-on:click="this.current--">-</button>
+    <button data-on:click="this.current++">+</button>
+    <p data-text="current"></p>
+    <template data-if="this.current === 2">
+      <p>2</p>
+    </template>
+    <template data-if="this.current === 4">
+      <p>4</p>
+    </template>
+  </div>
+
+  <!-- <div data-app="{ search: '', user: { name: 'Khusyasy', age: 20 }, event: null }">
       <ul>
         <li>Name: <span data-text="user.name"></span></li>
         <li>Age: <span data-text="user.age"></span></li>
@@ -50,7 +62,7 @@
         Open
       </div>
     </div> -->
-
+  <!-- 
     <div data-app="{ input: 0, name: 'Khusyasy', grades: [55, 67, 83, 90, 43] }">
       <input type="number" data-model="input">
       <input type="text" data-model="name">
@@ -67,7 +79,7 @@
         </template>
         after
       </ol>
-    </div>
-  </body>
+    </div> -->
+</body>
 
 </html>

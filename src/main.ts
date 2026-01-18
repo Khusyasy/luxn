@@ -31,14 +31,19 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
     if (jsLike === undefined) continue
     if (name === 'text') {
       // data-text
+      state.startTracking()
       element.innerText = `${state.proxy[jsLike]}`
-      state.addCallbacks('cb-text', () => {
+      const depends = state.stopTracking()
+      state.addCallbacks(depends, () => {
         element.innerText = `${state.proxy[jsLike]}`
       })
     } else if (name === 'html') {
       // data-html
+      // TODO: fix this i forgor
+      state.startTracking()
       element.innerHTML = `${jsLike}`
-      state.addCallbacks('cb-html', () => {
+      const depends = state.stopTracking()
+      state.addCallbacks(depends, () => {
         element.innerHTML = `${jsLike}`
       })
     } else if (name === 'model') {
@@ -61,8 +66,10 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
         }
       }
 
+      state.startTracking()
       formElementSet()
-      state.addCallbacks('cb-model', () => {
+      const depends = state.stopTracking()
+      state.addCallbacks(depends, () => {
         formElementSet()
       })
       element.addEventListener('input', () => {
@@ -93,8 +100,11 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
           }
         }
       }
+
+      state.startTracking()
       updateFor()
-      state.addCallbacks('cb-for', () => {
+      const depends = state.stopTracking()
+      state.addCallbacks(depends, () => {
         vNode.children.forEach(child => child.element.remove())
         vNode.children = []
         updateFor()
@@ -119,8 +129,11 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
           vNode.children.forEach(child => child.element.remove())
         }
       }
+
+      state.startTracking()
       updateIf()
-      state.addCallbacks('cb-if', () => {
+      const depends = state.stopTracking()
+      state.addCallbacks(depends, () => {
         updateIf()
       })
     } else if (name === 'else') {
@@ -163,8 +176,11 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
           element.setAttribute(attrName, resultString)
         }
       }
+
+      state.startTracking()
       updateAttr()
-      state.addCallbacks('cb-bind', () => {
+      const depends = state.stopTracking()
+      state.addCallbacks(depends, () => {
         updateAttr()
       })
     } else {

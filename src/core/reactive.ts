@@ -5,34 +5,23 @@ export function isStateProxy(x: any): x is StateProxy {
   return x && x.__brand === 'StateProxy'
 }
 
-type From = 'cb-for' | 'cb-if' | 'cb-model' | 'cb-bind' | 'cb-text' | 'cb-html'
 type Handler = () => void
-type Callbacks = Record<From, Handler[]>
-
-// 'cb-for' can init app inside loop so it need to be first
-// 'cb-if' kinda same as for
-// 'cb-model' can write to proxy so it need to update before the other read
-// 'cb-bind', 'cb-text', 'cb-html' only read so should update last
-const UPDATE_ORDER = ['cb-for', 'cb-if', 'cb-model', 'cb-bind', 'cb-text', 'cb-html'] as const
-type Missing = AssertNever<Exclude<From, typeof UPDATE_ORDER[number]>>
+type Callbacks = Record<string, Handler[]>
 
 export class StateHandler {
   callbacks: Callbacks
   data
   parent
+  tracking: boolean
+  trackedProps: string[]
   proxy: StateProxy
 
   constructor(data: object, parent: StateHandler | null = null) {
-    this.callbacks = {
-      'cb-for': [],
-      'cb-if': [],
-      'cb-model': [],
-      'cb-bind': [],
-      'cb-text': [],
-      'cb-html': [],
-    }
+    this.callbacks = {}
     this.data = data
     this.parent = parent
+    this.tracking = false
+    this.trackedProps = []
 
     const handler: ProxyHandler<Record<PropertyKey, any>> = {
       get: (target, prop, receiver) => {
@@ -40,6 +29,10 @@ export class StateHandler {
         // TODO: i think nested prop doesnt work for parents for now
         if (typeof prop === 'string' && prop.includes('.')) return this.getNestedProp(prop)
         // console.log('get', target, prop, receiver)
+
+        if (typeof prop === 'string' && this.tracking) {
+          this.trackedProps.push(prop)
+        }
 
         if (prop in target) {
           const value = Reflect.get(target, prop, receiver)
@@ -65,9 +58,9 @@ export class StateHandler {
         } else {
           result = Reflect.set(target, prop, value, receiver)
         }
-        for (const from of UPDATE_ORDER) {
-          for (const callback of this.callbacks[from]) {
-            // console.log(from, callback.toString(), target)
+        if (typeof prop === 'string' && this.callbacks[prop]) {
+          for (const callback of this.callbacks[prop]) {
+            // console.log('callback', prop, callback.toString())
             callback.call(target)
           }
         }
@@ -78,9 +71,13 @@ export class StateHandler {
     this.proxy = new Proxy(data, handler) as StateProxy
   }
 
-  addCallbacks(from: From, handler: Handler) {
-    // console.log(from, handler.toString(), this.data)
-    this.callbacks[from].push(handler)
+  addCallbacks(depends: string[], handler: Handler) {
+    for (const depend of depends) {
+      if (!this.callbacks[depend]) {
+        this.callbacks[depend] = []
+      }
+      this.callbacks[depend].push(handler)
+    }
   }
 
   getNestedProp(prop: string) {
@@ -109,5 +106,15 @@ export class StateHandler {
     }
 
     return curr
+  }
+
+  startTracking() {
+    this.trackedProps = []
+    this.tracking = true
+  }
+
+  stopTracking() {
+    this.tracking = true
+    return this.trackedProps
   }
 }
