@@ -121,7 +121,16 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
         } else {
           resultClass.push(value)
         }
-        element.setAttribute(attrName, resultClass.join(' '))
+
+        const resultString = resultClass.join(' ')
+
+        if (value === false || value === null || value === undefined) {
+          // special case for falsy, just delete the html attribute
+          // assumed if we used reactive condition stuff we shouldnt set the nonreactive one
+          element.removeAttribute(attrName)
+        } else {
+          element.setAttribute(attrName, resultString)
+        }
       }
       updateAttr()
       state.addCallbacks('cb-bind', () => {
