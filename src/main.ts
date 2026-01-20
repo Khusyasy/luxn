@@ -25,27 +25,24 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
   const vNode = new VNode(state, element)
 
   // TODO: handle jsLike so it can use variable directly while keeping reactivity instead of using 'this.'
+  // TODO: handle dependency tracking i guess
   const dataset = element.dataset
   // console.log(element, dataset)
   for (const [name, jsLike] of Object.entries(dataset)) {
     if (jsLike === undefined) continue
-    if (name === 'text') {
+    if (name === 'app') {
+      // data-app
+      throw new Error(`'data-app' is not allowed inside another 'data-app'`)
+    } else if (name === 'text') {
       // data-text
-      state.startTracking()
-      element.innerText = `${state.proxy[jsLike]}`
-      const depends = state.stopTracking()
-      state.addCallbacks(depends, () => {
-        element.innerText = `${state.proxy[jsLike]}`
+      element.innerText = `${state.getDot(jsLike)}`
+      state.addCallbacks(() => {
+        element.innerText = `${state.getDot(jsLike)}`
       })
     } else if (name === 'html') {
       // data-html
-      // TODO: fix this i forgor
-      state.startTracking()
-      element.innerHTML = `${jsLike}`
-      const depends = state.stopTracking()
-      state.addCallbacks(depends, () => {
-        element.innerHTML = `${jsLike}`
-      })
+      // TODO: implement this i forgor
+      throw new Error(`'data-html' is not implemented yet`)
     } else if (name === 'model') {
       // data-model
       if (!(element instanceof HTMLInputElement)) {
@@ -53,23 +50,21 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
       }
       const formElementSet = () => {
         if (element.type === 'checkbox') {
-          element.checked = state.proxy[jsLike]
+          element.checked = state.getDot(jsLike)
         } else { // default for all input type
-          element.value = state.proxy[jsLike]
+          element.value = state.getDot(jsLike)
         }
       }
       const formElementGet = () => {
         if (element.type === 'checkbox') {
-          state.proxy[jsLike] = element.checked
+          state.setDot(jsLike, element.checked)
         } else { // default for all input type
-          state.proxy[jsLike] = element.value
+          state.setDot(jsLike, element.value)
         }
       }
 
-      state.startTracking()
       formElementSet()
-      const depends = state.stopTracking()
-      state.addCallbacks(depends, () => {
+      state.addCallbacks(() => {
         formElementSet()
       })
       element.addEventListener('input', () => {
@@ -78,10 +73,8 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
     } else if (name === 'effect') {
       // data-effect
       const effectFn = parseStrAsJsLike(jsLike, state)
-      state.startTracking()
       effectFn()
-      const depends = state.stopTracking()
-      state.addCallbacks(depends, () => {
+      state.addCallbacks(() => {
         effectFn()
       })
     } else if (name === 'for') {
@@ -110,10 +103,8 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
         }
       }
 
-      state.startTracking()
       updateFor()
-      const depends = state.stopTracking()
-      state.addCallbacks(depends, () => {
+      state.addCallbacks(() => {
         vNode.children.forEach(child => child.element.remove())
         vNode.children = []
         updateFor()
@@ -139,10 +130,8 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
         }
       }
 
-      state.startTracking()
       updateIf()
-      const depends = state.stopTracking()
-      state.addCallbacks(depends, () => {
+      state.addCallbacks(() => {
         updateIf()
       })
     } else if (name === 'else') {
@@ -186,10 +175,8 @@ function recursiveinitApp(state: StateHandler, element: HTMLElement) {
         }
       }
 
-      state.startTracking()
       updateAttr()
-      const depends = state.stopTracking()
-      state.addCallbacks(depends, () => {
+      state.addCallbacks(() => {
         updateAttr()
       })
     } else {

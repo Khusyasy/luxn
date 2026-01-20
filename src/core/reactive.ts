@@ -1,12 +1,11 @@
 type StateProxy = Record<PropertyKey, any> & { __brand: 'StateProxy' }
-type AssertNever<T extends never> = T
 
 export function isStateProxy(x: any): x is StateProxy {
   return x && x.__brand === 'StateProxy'
 }
 
 type Handler = () => void
-type Callbacks = Record<string, Handler[]>
+type Callbacks = Handler[]
 
 export class StateHandler {
   callbacks: Callbacks
@@ -17,7 +16,7 @@ export class StateHandler {
   proxy: StateProxy
 
   constructor(data: object, parent: StateHandler | null = null) {
-    this.callbacks = {}
+    this.callbacks = []
     this.data = data
     this.parent = parent
     this.tracking = false
@@ -26,13 +25,7 @@ export class StateHandler {
     const handler: ProxyHandler<Record<PropertyKey, any>> = {
       get: (target, prop, receiver) => {
         if (prop === '__brand') return 'StateProxy'
-        // TODO: i think nested prop doesnt work for parents for now
-        if (typeof prop === 'string' && prop.includes('.')) return this.getNestedProp(prop)
-        // console.log('get', target, prop, receiver)
-
-        if (typeof prop === 'string' && this.tracking) {
-          this.trackedProps.add(prop)
-        }
+        // console.log('set', prop, receiver)
 
         if (prop in target) {
           const value = Reflect.get(target, prop, receiver)
@@ -43,80 +36,67 @@ export class StateHandler {
         }
 
         if (this.parent) {
-          return this.parent.proxy[prop]
+          if (prop in this.parent.data) {
+            return this.parent.proxy[prop]
+          }
         }
 
         return undefined
       },
       set: (target, prop, value, receiver) => {
-        // console.log('set', target, prop, value, receiver)
-        let result: boolean;
-        if (typeof prop === 'string' && prop.includes('.')) {
-          const path = prop.split('.').pop() || ''
-          const proxy = this.getNestedProxy(prop)
-          result = Reflect.set(proxy, path, value)
-        } else {
-          result = Reflect.set(target, prop, value, receiver)
-        }
-        if (typeof prop === 'string' && this.callbacks[prop]) {
-          for (const callback of this.callbacks[prop]) {
+        // console.log('set', prop, value, receiver)
+
+        if (prop in target) {
+          const result = Reflect.set(target, prop, value, receiver)
+
+          for (const callback of this.callbacks) {
             // console.log('callback', prop, callback.toString())
-            // console.log('callback')
+            console.log('callback')
             callback.call(target)
           }
+
+          return result
         }
-        return result
+
+        if (this.parent) {
+          if (prop in this.parent.data) {
+            const result = Reflect.set(this.parent.proxy, prop, value)
+            return result
+          }
+        }
+
+
+        return false
       },
     }
 
     this.proxy = new Proxy(data, handler) as StateProxy
   }
 
-  addCallbacks(depends: string[], handler: Handler) {
-    for (const depend of depends) {
-      if (depend === 'constructor') continue  // special case, mungkin ada lagi yang lain?
-      if (!this.callbacks[depend]) {
-        this.callbacks[depend] = []
-      }
-      this.callbacks[depend].push(handler)
+  getDot(s: string): any {
+    const props = s.split('.')
+    let current: any = this.proxy
+    for (const prop of props) {
+      const next = current[prop]
+      current = next
     }
+    return current
   }
 
-  getNestedProp(prop: string) {
-    const paths = prop.split('.')
+  setDot(s: string, value: any): boolean {
+    const props = s.split('.')
+    const key = props.pop()
+    if (!key) return false
 
-    let curr: any = this.proxy
-    for (const path of paths) {
-      if (isStateProxy(curr)) {
-        const next = curr[path]
-        curr = next
-      }
+    let current: any = this.proxy
+    for (const prop of props) {
+      const next = current[prop]
+      current = next
     }
-
-    return curr
+    return current[key] = value
   }
 
-  getNestedProxy(prop: string) {
-    const paths = prop.split('.')
-
-    let curr = this.proxy
-    for (const path of paths) {
-      const next = curr[path]
-      if (isStateProxy(next)) {
-        curr = next
-      }
-    }
-
-    return curr
-  }
-
-  startTracking() {
-    this.trackedProps.clear()
-    this.tracking = true
-  }
-
-  stopTracking(): string[] {
-    this.tracking = true
-    return Array.from(this.trackedProps)
+  addCallbacks(handler: Handler) {
+    this.callbacks.push(handler)
   }
 }
